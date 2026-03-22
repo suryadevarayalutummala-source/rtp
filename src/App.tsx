@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Analytics } from '@vercel/analytics/react';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
 import { MarketInsights } from './components/MarketInsights';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-on-surface selection:bg-primary/30">
+      <Analytics />
       <AnimatePresence mode="wait">
         {screen === 'login' && (
           <motion.div
