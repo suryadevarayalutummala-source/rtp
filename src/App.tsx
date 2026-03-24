@@ -14,6 +14,9 @@ import { AccessRecovery } from './components/AccessRecovery';
 import { SecurityKeyRecovery } from './components/SecurityKeyRecovery';
 import { PredictionEngine } from './components/PredictionEngine';
 import { Sidebar, TopNav } from './components/Layout';
+import { SettingsModal } from './components/SettingsModal';
+import { HOLDINGS } from './constants';
+import { Holding } from './types';
 
 type Screen = 'login' | 'dashboard' | 'request' | 'recovery' | 'key-recovery';
 type DashboardTab = 'overview' | 'watchlist' | 'positions' | 'risk' | 'history' | 'predictions' | 'insights';
@@ -22,6 +25,28 @@ const App: React.FC = () => {
   const [screen, setScreen] = useState<Screen>('login');
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const [userType, setUserType] = useState<'institutional' | 'personal'>('institutional');
+  const [holdings, setHoldings] = useState<Holding[]>(HOLDINGS);
+  const [latency, setLatency] = useState<number>(14);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [currency, setCurrency] = useState('INR');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [notifications, setNotifications] = useState({
+    priceAlerts: true,
+    marketNews: true,
+    securityAlerts: true,
+    alphaSignals: false
+  });
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setLatency(prev => {
+        const change = Math.floor(Math.random() * 5) - 2; // -2 to +2
+        const next = prev + change;
+        return Math.max(8, Math.min(32, next)); // Keep between 8ms and 32ms
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = () => {
     setScreen('dashboard');
@@ -34,9 +59,13 @@ const App: React.FC = () => {
   const renderDashboardContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <Dashboard />;
+        return <Dashboard holdings={holdings} currency={currency} />;
       case 'positions':
-        return <PortfolioDetails />;
+        return <PortfolioDetails holdings={holdings} setHoldings={setHoldings} currency={currency} />;
+      case 'predictions':
+        return <PredictionEngine currency={currency} />;
+      case 'insights':
+        return <MarketInsights />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-on-surface-variant">
@@ -104,13 +133,25 @@ const App: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col min-h-screen"
+            className={`flex flex-col min-h-screen ${theme === 'light' ? 'bg-white text-slate-900' : 'bg-background text-on-surface'}`}
           >
+            <SettingsModal 
+              isOpen={isSettingsOpen} 
+              onClose={() => setIsSettingsOpen(false)} 
+              currency={currency}
+              setCurrency={setCurrency}
+              theme={theme}
+              setTheme={setTheme}
+              notifications={notifications}
+              setNotifications={setNotifications}
+            />
             <TopNav 
               userType={userType} 
               activeTab={activeTab} 
               setActiveTab={(tab) => setActiveTab(tab as DashboardTab)} 
               onLogout={handleLogout}
+              onSettingsOpen={() => setIsSettingsOpen(true)}
+              currency={currency}
             />
             <div className="flex flex-1 pt-16">
               <Sidebar 
@@ -156,7 +197,7 @@ const App: React.FC = () => {
                 <footer className="mt-20 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4 opacity-40">
                   <div className="flex gap-6">
                     <span className="text-[10px] font-label uppercase tracking-widest">System Status: Operational</span>
-                    <span className="text-[10px] font-label uppercase tracking-widest">Latency: 14ms</span>
+                    <span className="text-[10px] font-label uppercase tracking-widest">Latency: {latency}ms</span>
                   </div>
                 </footer>
               </main>

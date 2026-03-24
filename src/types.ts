@@ -21,8 +21,10 @@ export interface Holding {
   ticker: string;
   name: string;
   sector: string;
+  type: 'stock' | 'mutual_fund';
   price: number;
   avgCost: number;
+  quantity: number;
   marketValue: number;
   plPercent: number;
   weight: number;

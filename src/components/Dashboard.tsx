@@ -10,8 +10,28 @@ import {
   Clock
 } from 'lucide-react';
 import { MARKET_INDICES } from '../constants';
+import { Holding } from '../types';
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  holdings: Holding[];
+  currency: string;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ holdings, currency }) => {
+  const conversionRates: Record<string, { rate: number, symbol: string }> = {
+    'INR': { rate: 1, symbol: '₹' },
+    'USD': { rate: 0.012, symbol: '$' },
+    'EUR': { rate: 0.011, symbol: '€' },
+    'GBP': { rate: 0.0094, symbol: '£' }
+  };
+
+  const { rate, symbol } = conversionRates[currency] || conversionRates['INR'];
+
+  const totalValue = holdings.reduce((sum, h) => sum + h.marketValue, 0) * rate;
+  const totalCost = holdings.reduce((sum, h) => sum + (h.avgCost * h.quantity), 0) * rate;
+  const totalPL = totalValue - totalCost;
+  const plPercent = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Market Indicators Ticker */}
@@ -53,11 +73,13 @@ export const Dashboard: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <h1 className="text-5xl font-headline font-extrabold tracking-[-0.04em] text-on-surface">₹12,84,25,509.64</h1>
+              <h1 className="text-5xl font-headline font-extrabold tracking-[-0.04em] text-on-surface">
+                {symbol}{totalValue.toLocaleString()}<span className="text-xl text-on-surface-variant font-medium ml-3 tracking-normal">.00</span>
+              </h1>
               <div className="flex items-center gap-3 mt-1">
-                <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-xs font-bold flex items-center">
-                  <TrendingUp size={12} className="mr-1" />
-                  +₹2,41,083.12 (1.91%)
+                <span className={`px-2 py-1 rounded text-xs font-bold flex items-center ${totalPL >= 0 ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
+                  {totalPL >= 0 ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
+                  {totalPL >= 0 ? '+' : ''}{symbol}{Math.abs(totalPL).toLocaleString()} ({plPercent.toFixed(2)}%)
                 </span>
                 <span className="text-on-surface-variant/60 text-xs">Past 24 hours</span>
               </div>
@@ -65,24 +87,57 @@ export const Dashboard: React.FC = () => {
 
             {/* Performance Chart Mockup */}
             <div className="h-64 w-full relative overflow-hidden rounded-xl bg-surface-low/50 border border-outline-variant/5">
-              <div className="absolute inset-0 flex items-end justify-between px-2 pt-12 pb-4 opacity-10">
-                {[...Array(7)].map((_, i) => (
-                  <div key={i} className="w-px h-full bg-on-surface"></div>
-                ))}
-              </div>
-              <svg className="absolute bottom-0 left-0 w-full h-48" preserveAspectRatio="none" viewBox="0 0 400 100">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#bdc2ff" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#bdc2ff" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path d="M0,80 Q50,60 100,75 T200,40 T300,20 T400,10 L400,100 L0,100 Z" fill="url(#chartGradient)" />
-                <path d="M0,80 Q50,60 100,75 T200,40 T300,20 T400,10" fill="none" stroke="#bdc2ff" strokeLinecap="round" strokeWidth="2.5" />
-              </svg>
+              {holdings.length > 0 ? (
+                <>
+                  <div className="absolute inset-0 flex items-end justify-between px-2 pt-12 pb-4 opacity-10">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="w-px h-full bg-on-surface"></div>
+                    ))}
+                  </div>
+                  <svg className="absolute bottom-0 left-0 w-full h-48" preserveAspectRatio="none" viewBox="0 0 400 100">
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#bdc2ff" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#bdc2ff" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {/* Dynamic Path Logic */}
+                    {(() => {
+                      const points = 10;
+                      const width = 400;
+                      const height = 100;
+                      const padding = 10;
+                      const startY = height - padding - ((totalCost / (Math.max(totalValue, totalCost) * 1.2 || 1)) * (height - 2 * padding));
+                      const endY = height - padding - ((totalValue / (Math.max(totalValue, totalCost) * 1.2 || 1)) * (height - 2 * padding));
+                      
+                      let pathData = `M 0 ${startY}`;
+                      for (let i = 1; i < points; i++) {
+                        const x = (i / (points - 1)) * width;
+                        const progress = i / (points - 1);
+                        const trendY = startY + (endY - startY) * progress;
+                        const noise = (Math.sin(i * 1.5) * 0.5 + Math.cos(i * 0.8) * 0.5) * 10;
+                        const y = i === points - 1 ? endY : Math.max(padding, Math.min(height - padding, trendY + noise));
+                        pathData += ` L ${x} ${y}`;
+                      }
+                      const areaData = `${pathData} L 400 100 L 0 100 Z`;
+                      
+                      return (
+                        <>
+                          <path d={areaData} fill="url(#chartGradient)" />
+                          <path d={pathData} fill="none" stroke="#bdc2ff" strokeLinecap="round" strokeWidth="2.5" />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-on-surface-variant/20">
+                  <p className="text-xs font-bold uppercase tracking-widest">No Portfolio Data</p>
+                </div>
+              )}
               <div className="absolute top-4 right-6 flex flex-col items-end">
                 <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">Peak Value</span>
-                <span className="text-sm font-headline font-bold">₹13.1Cr</span>
+                <span className="text-sm font-headline font-bold">{symbol}{(totalValue * 1.05 / (currency === 'INR' ? 10000000 : 1000000)).toFixed(1)}{currency === 'INR' ? 'Cr' : 'M'}</span>
               </div>
             </div>
           </div>
@@ -138,7 +193,7 @@ export const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-on-surface">₹{stock.price}</p>
+                    <p className="text-sm font-bold text-on-surface">{symbol}{(stock.price * rate).toLocaleString()}</p>
                     <p className="text-xs text-secondary font-bold">+{stock.change}%</p>
                   </div>
                 </div>
