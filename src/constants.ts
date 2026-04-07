@@ -54,8 +54,10 @@ export const HOLDINGS: Holding[] = [
     ticker: 'RELIANCE',
     name: 'Reliance Industries',
     sector: 'Energy & Retail',
+    type: 'stock',
     price: 2984.30,
     avgCost: 2421.10,
+    quantity: 416,
     marketValue: 1242104.20,
     plPercent: 23.2,
     weight: 22.0
@@ -64,8 +66,10 @@ export const HOLDINGS: Holding[] = [
     ticker: 'TCS',
     name: 'Tata Consultancy Services',
     sector: 'Technology',
+    type: 'stock',
     price: 4115.50,
     avgCost: 3888.20,
+    quantity: 214,
     marketValue: 882410.00,
     plPercent: 5.8,
     weight: 15.9
@@ -74,8 +78,10 @@ export const HOLDINGS: Holding[] = [
     ticker: 'HDFCBANK',
     name: 'HDFC Bank Ltd.',
     sector: 'Banking',
+    type: 'stock',
     price: 1475.20,
     avgCost: 1592.40,
+    quantity: 352,
     marketValue: 520112.55,
     plPercent: -7.3,
     weight: 7.4
@@ -84,8 +90,10 @@ export const HOLDINGS: Holding[] = [
     ticker: 'INFY',
     name: 'Infosys Limited',
     sector: 'Technology',
+    type: 'stock',
     price: 1670.30,
     avgCost: 1565.10,
+    quantity: 443,
     marketValue: 740882.10,
     plPercent: 6.7,
     weight: 12.6

@@ -15,8 +15,13 @@ import {
   ChevronRight,
   Shield,
   CreditCard,
-  Activity
+  Activity,
+  Loader2,
+  Plus,
+  Cpu,
+  Zap
 } from 'lucide-react';
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface SidebarProps {
   activeTab: string;
@@ -29,6 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} /> },
     { id: 'watchlist', label: 'Watchlist', icon: <Eye size={20} /> },
     { id: 'positions', label: 'Positions', icon: <PieChart size={20} /> },
+    { id: 'predictions', label: 'Predictions', icon: <Cpu size={20} /> },
+    { id: 'insights', label: 'Insights', icon: <Zap size={20} /> },
     { id: 'risk', label: 'Risk Metrics', icon: <ShieldCheck size={20} /> },
     { id: 'history', label: 'History', icon: <History size={20} /> },
   ];
@@ -87,20 +94,90 @@ export const TopNav: React.FC<{
   userType?: 'institutional' | 'personal',
   activeTab: string,
   setActiveTab: (tab: string) => void,
-  onLogout?: () => void
-}> = ({ userType = 'institutional', activeTab, setActiveTab, onLogout }) => {
+  onLogout?: () => void,
+  onSettingsOpen?: () => void,
+  currency: string
+}> = ({ userType = 'institutional', activeTab, setActiveTab, onLogout, onSettingsOpen, currency }) => {
+  const conversionRates: Record<string, { rate: number, symbol: string }> = {
+    'INR': { rate: 1, symbol: '₹' },
+    'USD': { rate: 0.012, symbol: '$' },
+    'EUR': { rate: 0.011, symbol: '€' },
+    'GBP': { rate: 0.0094, symbol: '£' }
+  };
+
+  const { rate, symbol } = conversionRates[currency] || conversionRates['INR'];
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim().length >= 2) {
+        performSearch(searchQuery);
+      } else {
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const performSearch = async (query: string) => {
+    setIsSearching(true);
+    setShowSearchDropdown(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Search for Indian stocks or mutual funds matching "${query}". 
+        Return a list of up to 5 relevant results with their ticker symbol, full name, sector, asset type ('stock' or 'mutual_fund'), and current market price in INR.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                ticker: { type: Type.STRING },
+                name: { type: Type.STRING },
+                sector: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ["stock", "mutual_fund"] },
+                price: { type: Type.NUMBER },
+              },
+              required: ["ticker", "name", "sector", "type", "price"],
+            },
+          },
+        },
+      });
+
+      const results = JSON.parse(response.text || "[]");
+      setSearchResults(results);
+    } catch (err) {
+      console.error("Global search error:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const profileImage = userType === 'institutional' 
     ? "https://lh3.googleusercontent.com/aida-public/AB6AXuAJ8RqUhcGXj4Msjh07-dz-QA9tsTit0jswBg-27e0E1iDOLJ7vMqiFklzeMSsLAB8f7OPruKS7QaAsO9CalQCme3TPeYzoiKFH7Q4eRobA3MY0bUEwWz8RSFHLSDLtVWZR9UDB-fb9uHocaZEnCUTUrAdF0QmAXc5RZ8DScojVgSo5v3d7Io9GFJxumSEExuR-vVLEbmbmsoKF0-S8G1ZEUIZaaUZf4MSB_k9OYbV03oghO9FPxZc7IXBqaCFGK8bIkAUmdzPv344"
@@ -138,14 +215,72 @@ export const TopNav: React.FC<{
         </nav>
       </div>
       <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center bg-surface-highest/50 rounded-lg px-3 py-1.5 gap-2 hover:bg-surface-highest/70 transition-all cursor-pointer border border-outline-variant/10">
-          <Search size={14} className="text-on-surface/60" />
-          <span className="text-xs text-on-surface/40">Search Terminal...</span>
+        <div className="hidden sm:flex items-center relative" ref={searchRef}>
+          <div className="flex items-center bg-surface-highest/50 rounded-lg px-3 py-1.5 gap-2 hover:bg-surface-highest/70 transition-all border border-outline-variant/10 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
+            <Search size={14} className="text-on-surface/60" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery.length >= 2 && setShowSearchDropdown(true)}
+              placeholder="Search Terminal..."
+              className="bg-transparent border-none outline-none text-xs text-on-surface placeholder:text-on-surface/40 w-32 focus:w-48 transition-all"
+            />
+          </div>
+
+          <AnimatePresence>
+            {showSearchDropdown && (searchResults.length > 0 || isSearching) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full right-0 mt-2 w-80 bg-surface-container border border-outline-variant/10 rounded-2xl shadow-2xl overflow-hidden z-50"
+              >
+                {isSearching ? (
+                  <div className="p-6 flex flex-col items-center gap-2 text-on-surface-variant">
+                    <Loader2 size={20} className="animate-spin text-primary" />
+                    <p className="text-[10px] uppercase tracking-widest font-bold">Querying Markets...</p>
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.ticker}
+                        onClick={() => {
+                          setActiveTab('positions');
+                          setShowSearchDropdown(false);
+                          setSearchQuery('');
+                        }}
+                        className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-surface-highest transition-all text-left group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-surface-low rounded-lg flex items-center justify-center font-bold text-[9px] text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                            {result.ticker}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-on-surface truncate max-w-[140px]">{result.name}</p>
+                            <p className="text-[9px] text-on-surface-variant uppercase">{result.type.replace('_', ' ')}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-on-surface">{symbol}{(result.price * rate).toLocaleString()}</p>
+                          <ChevronRight size={12} className="text-primary ml-auto mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         <button className="p-2 hover:bg-surface-highest/50 rounded-full transition-all active:scale-95 duration-200">
           <Bell size={20} className="text-on-surface" />
         </button>
-        <button className="p-2 hover:bg-surface-highest/50 rounded-full transition-all active:scale-95 duration-200">
+        <button 
+          onClick={onSettingsOpen}
+          className="p-2 hover:bg-surface-highest/50 rounded-full transition-all active:scale-95 duration-200"
+        >
           <Settings size={20} className="text-on-surface" />
         </button>
         

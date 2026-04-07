@@ -12,7 +12,16 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export const PredictionEngine: React.FC = () => {
+export const PredictionEngine: React.FC<{ currency?: string }> = ({ currency = 'INR' }) => {
+  const conversionRates: Record<string, { rate: number, symbol: string }> = {
+    'INR': { rate: 1, symbol: '₹' },
+    'USD': { rate: 0.012, symbol: '$' },
+    'EUR': { rate: 0.011, symbol: '€' },
+    'GBP': { rate: 0.0094, symbol: '£' }
+  };
+
+  const { rate, symbol } = conversionRates[currency] || conversionRates['INR'];
+
   return (
     <div className="max-w-7xl mx-auto">
       <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -30,12 +39,12 @@ export const PredictionEngine: React.FC = () => {
         <div className="flex gap-4">
           <div className="bg-surface-low px-6 py-3 rounded-2xl border border-outline-variant/10">
             <span className="text-[10px] text-on-surface-variant uppercase tracking-widest block mb-1">Current Price</span>
-            <span className="text-2xl font-headline font-bold text-on-surface">₹2,984.30</span>
+            <span className="text-2xl font-headline font-bold text-on-surface">{symbol}{(2984.30 * rate).toLocaleString()}</span>
             <span className="text-xs text-secondary font-bold ml-2">+1.4%</span>
           </div>
           <div className="bg-primary-container/20 px-6 py-3 rounded-2xl border border-primary/20">
             <span className="text-[10px] text-primary uppercase tracking-widest block mb-1">Projected (30D)</span>
-            <span className="text-2xl font-headline font-bold text-primary">₹3,450.80</span>
+            <span className="text-2xl font-headline font-bold text-primary">{symbol}{(3450.80 * rate).toLocaleString()}</span>
             <span className="text-xs text-secondary font-bold ml-2">+15.6%</span>
           </div>
         </div>
@@ -101,9 +110,9 @@ export const PredictionEngine: React.FC = () => {
 
           <div className="mt-10 grid grid-cols-4 gap-4 border-t border-outline-variant/10 pt-8">
             {[
-              { label: 'Bull Case', value: '₹3,650.00', color: 'text-secondary' },
-              { label: 'Base Case', value: '₹3,450.80', color: 'text-primary' },
-              { label: 'Bear Case', value: '₹2,820.00', color: 'text-tertiary' },
+              { label: 'Bull Case', value: `${symbol}${(3650 * rate).toLocaleString()}`, color: 'text-secondary' },
+              { label: 'Base Case', value: `${symbol}${(3450.80 * rate).toLocaleString()}`, color: 'text-primary' },
+              { label: 'Bear Case', value: `${symbol}${(2820 * rate).toLocaleString()}`, color: 'text-tertiary' },
               { label: 'Prob. Distribution', value: 'Gaussian', color: 'text-on-surface-variant' }
             ].map(item => (
               <div key={item.label}>
