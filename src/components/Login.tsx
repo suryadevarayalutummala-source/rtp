@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ShieldAlert
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface LoginProps {
   onLogin: () => void;
@@ -15,16 +16,20 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToRequest, onNavigateToRecovery }) => {
+  const { login } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'admin' && password === 'admin') {
+    setError('');
+    
+    try {
+      await login(email, password);
       onLogin();
-    } else {
-      setError('Invalid institutional credentials. Access denied.');
+    } catch (err: any) {
+      setError(err.message || 'Invalid credentials');
     }
   };
 

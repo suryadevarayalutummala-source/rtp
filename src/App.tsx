@@ -14,6 +14,7 @@ import { AccessRecovery } from './components/AccessRecovery';
 import { SecurityKeyRecovery } from './components/SecurityKeyRecovery';
 import { PredictionEngine } from './components/PredictionEngine';
 import { Sidebar, TopNav } from './components/Layout';
+import { AuthProvider } from './context/AuthContext';
 
 type Screen = 'login' | 'dashboard' | 'request' | 'recovery' | 'key-recovery';
 type DashboardTab = 'overview' | 'watchlist' | 'positions' | 'risk' | 'history' | 'predictions' | 'insights';
@@ -48,8 +49,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface selection:bg-primary/30">
-      <AnimatePresence mode="wait">
+    <AuthProvider>
+      <div className="min-h-screen bg-background text-on-surface selection:bg-primary/30">
+        <AnimatePresence mode="wait">
         {screen === 'login' && (
           <motion.div
             key="login"
@@ -164,7 +166,8 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </AuthProvider>
   );
 };
 

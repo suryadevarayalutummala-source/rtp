@@ -6,6 +6,21 @@ export interface NavItem {
   icon: React.ReactNode;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  user_type: 'institutional' | 'personal';
+}
+
+export interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, full_name: string, user_type: string) => Promise<void>;
+  logout: () => void;
+}
+
 export interface Article {
   id: string;
   category: string;
