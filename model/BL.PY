@@ -38,8 +38,8 @@ model.fit(x_train,y_train)
 print("Model trained")
 
 predictions = model.predict(x_test)
-mape = mean_absolute_percentage_error(y_test,predictions)*100
-print(f"Baseline MAPE : {mape:.3f}%")
+bs_mape = mean_absolute_percentage_error(y_test,predictions)*100
+print(f"Baseline MAPE : {bs_mape:.3f}%")
 
 
 actual = scaler.inverse_transform(y_test)
