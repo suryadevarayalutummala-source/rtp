@@ -12,7 +12,6 @@ import {
   X,
   PieChart as PieChartIcon
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { Holding } from '../types';
 
 interface PortfolioDetailsProps {
@@ -76,33 +75,53 @@ export const PortfolioDetails: React.FC<PortfolioDetailsProps> = ({ holdings, se
     setShowDropdown(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Search for Indian stocks or mutual funds matching "${query}". 
-        Return a list of up to 5 relevant results with their ticker symbol, full name, sector, asset type ('stock' or 'mutual_fund'), and current market price in INR.
-        For mutual funds, use their common short code as the ticker.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                ticker: { type: Type.STRING, description: "Stock ticker or MF code" },
-                name: { type: Type.STRING, description: "Full name of the asset" },
-                sector: { type: Type.STRING, description: "Industry or asset class" },
-                type: { type: Type.STRING, enum: ["stock", "mutual_fund"], description: "Type of asset" },
-                price: { type: Type.NUMBER, description: "Current market price in INR" },
-              },
-              required: ["ticker", "name", "sector", "type", "price"],
-            },
-          },
-        },
-      });
+      // Step 1: Search Yahoo Finance for matching tickers
+      const searchUrl = `/api/yahoo-search/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=IN&quotesCount=6&newsCount=0&listsCount=0`;
+      const searchRes = await fetch(searchUrl);
+      if (!searchRes.ok) throw new Error(`Search HTTP ${searchRes.status}`);
+      const searchData = await searchRes.json();
 
-      const results = JSON.parse(response.text || "[]");
-      setSearchResults(results);
+      // Filter to equities and mutual funds, prefer Indian (NS/BO) tickers
+      const quotes = (searchData.quotes || [])
+        .filter((q: any) => q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND')
+        .slice(0, 5);
+
+      if (quotes.length === 0) {
+        setSearchResults([]);
+        return;
+      }
+
+      // Step 2: Fetch live prices for each result via the chart API
+      const results = await Promise.all(
+        quotes.map(async (q: any) => {
+          try {
+            const chartUrl = `/api/yahoo-finance/v8/finance/chart/${encodeURIComponent(q.symbol)}?interval=1d&range=1d`;
+            const chartRes = await fetch(chartUrl);
+            if (!chartRes.ok) return null;
+            const chartData = await chartRes.json();
+            const meta = chartData.chart?.result?.[0]?.meta;
+            const price = meta?.regularMarketPrice || meta?.previousClose || 0;
+
+            // Determine asset type
+            const assetType = q.quoteType === 'MUTUALFUND' ? 'mutual_fund' : 'stock';
+
+            // Derive sector from industry or exchange
+            const sector = q.industry || q.sector || q.exchDisp || 'Equity';
+
+            return {
+              ticker: q.symbol,
+              name: q.shortname || q.longname || q.symbol,
+              sector,
+              type: assetType,
+              price,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      setSearchResults(results.filter(Boolean));
     } catch (err) {
       console.error("Search error:", err);
       setError("Failed to retrieve market data. Please try again.");

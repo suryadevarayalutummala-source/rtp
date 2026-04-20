@@ -49,58 +49,52 @@ export const ARTICLES: Article[] = [
   }
 ];
 
-export const HOLDINGS: Holding[] = [
+// Base holdings with static data only - prices are fetched live
+export const HOLDINGS_BASE = [
   {
     ticker: 'RELIANCE',
     name: 'Reliance Industries',
     sector: 'Energy & Retail',
-    type: 'stock',
-    price: 2984.30,
+    type: 'stock' as const,
     avgCost: 2421.10,
     quantity: 416,
-    marketValue: 1242104.20,
-    plPercent: 23.2,
-    weight: 22.0
   },
   {
     ticker: 'TCS',
     name: 'Tata Consultancy Services',
     sector: 'Technology',
-    type: 'stock',
-    price: 4115.50,
+    type: 'stock' as const,
     avgCost: 3888.20,
     quantity: 214,
-    marketValue: 882410.00,
-    plPercent: 5.8,
-    weight: 15.9
   },
   {
     ticker: 'HDFCBANK',
     name: 'HDFC Bank Ltd.',
     sector: 'Banking',
-    type: 'stock',
-    price: 1475.20,
+    type: 'stock' as const,
     avgCost: 1592.40,
     quantity: 352,
-    marketValue: 520112.55,
-    plPercent: -7.3,
-    weight: 7.4
   },
   {
     ticker: 'INFY',
     name: 'Infosys Limited',
     sector: 'Technology',
-    type: 'stock',
-    price: 1670.30,
+    type: 'stock' as const,
     avgCost: 1565.10,
     quantity: 443,
-    marketValue: 740882.10,
-    plPercent: 6.7,
-    weight: 12.6
   }
 ];
 
-export const MARKET_INDICES: MarketIndex[] = [
+// Fallback prices if API fails (last known good values)
+export const FALLBACK_PRICES: Record<string, number> = {
+  'RELIANCE': 2984.30,
+  'TCS': 4115.50,
+  'HDFCBANK': 1475.20,
+  'INFY': 1670.30
+};
+
+// Fallback market indices if API fails
+export const FALLBACK_INDICES: MarketIndex[] = [
   { name: 'Nifty 50', value: 22096.75, change: 173.90, changePercent: 0.79 },
   { name: 'BSE Sensex', value: 72831.94, change: 528.60, changePercent: 0.73 },
   { name: 'Nifty Bank', value: 46863.75, change: -47.35, changePercent: -0.10 }

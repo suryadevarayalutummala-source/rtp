@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -13,20 +13,47 @@ import { AccessRequest } from './components/AccessRequest';
 import { AccessRecovery } from './components/AccessRecovery';
 import { SecurityKeyRecovery } from './components/SecurityKeyRecovery';
 import { PredictionEngine } from './components/PredictionEngine';
+import { HistoryTab } from './components/HistoryTab';
 import { Sidebar, TopNav } from './components/Layout';
 import { AuthProvider } from './context/AuthContext';
 import { SettingsModal } from './components/SettingsModal';
-import { HOLDINGS } from './constants';
+import { HOLDINGS_BASE, FALLBACK_PRICES, FALLBACK_INDICES } from './constants';
 import { Holding } from './types';
+import { fetchLivePrices, fetchMarketIndices, type PriceData, type MarketIndex } from './services/marketData';
+import { fetchMarketNews, Article } from './services/newsService';
 
 type Screen = 'login' | 'dashboard' | 'request' | 'recovery' | 'key-recovery';
 type DashboardTab = 'overview' | 'watchlist' | 'positions' | 'risk' | 'history' | 'predictions' | 'insights';
 
+// Persistent State Initialization
+const getInitialScreen = (): Screen => {
+  const saved = localStorage.getItem('rtp_screen');
+  return (saved as Screen) || 'login';
+};
+
 const App: React.FC = () => {
-  const [screen, setScreen] = useState<Screen>('login');
+  const [screen, setScreen] = useState<Screen>(getInitialScreen);
+
+  useEffect(() => {
+    localStorage.setItem('rtp_screen', screen);
+  }, [screen]);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const [userType, setUserType] = useState<'institutional' | 'personal'>('institutional');
-  const [holdings, setHoldings] = useState<Holding[]>(HOLDINGS);
+  const [holdings, setHoldings] = useState<Holding[]>(() => 
+    HOLDINGS_BASE.map(h => ({
+      ...h,
+      price: FALLBACK_PRICES[h.ticker] || 0,
+      marketValue: (FALLBACK_PRICES[h.ticker] || 0) * h.quantity,
+      plPercent: 0,
+      weight: 0
+    }))
+  );
+  const [livePrices, setLivePrices] = useState<Record<string, PriceData>>({});
+  const [marketIndices, setMarketIndices] = useState<MarketIndex[]>(FALLBACK_INDICES);
+  const [news, setNews] = useState<Article[]>([]);
+  const [reliancePrice, setReliancePrice] = useState<number>(FALLBACK_PRICES['RELIANCE']);
+  const [pricesLoading, setPricesLoading] = useState(true);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [latency, setLatency] = useState<number>(14);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currency, setCurrency] = useState('INR');
@@ -38,12 +65,86 @@ const App: React.FC = () => {
     alphaSignals: false
   });
 
+  // Fetch live prices on mount and set up polling
+  const fetchPrices = useCallback(async () => {
+    // Fetch for all current holdings + market indices
+    const tickers = holdings.map(h => h.ticker);
+    
+    // Add default tickers if not in holdings to ensure dashboard charts work
+    HOLDINGS_BASE.forEach(h => {
+      if (!tickers.includes(h.ticker)) tickers.push(h.ticker);
+    });
+
+    const [prices, indices] = await Promise.all([
+      fetchLivePrices(tickers),
+      fetchMarketIndices()
+    ]);
+
+    setLivePrices(prev => ({ ...prev, ...prices }));
+    if (indices.length > 0) setMarketIndices(indices);
+    if (prices['RELIANCE']?.price) setReliancePrice(prices['RELIANCE'].price);
+    setPricesLoading(false);
+  }, [holdings]);
+
+  const fetchMarketIntelligence = useCallback(async () => {
+    try {
+      const articles = await fetchMarketNews('Indian Stock Market Business');
+      setNews(articles);
+    } catch (err) {
+      console.error('Failed to fetch news:', err);
+    } finally {
+      setNewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPrices();
+    fetchMarketIntelligence();
+    const pollInterval = setInterval(fetchPrices, 30000); 
+    const newsInterval = setInterval(fetchMarketIntelligence, 60000);
+    return () => {
+      clearInterval(pollInterval);
+      clearInterval(newsInterval);
+    };
+  }, [fetchPrices, fetchMarketIntelligence]);
+
+  // Sync holdings with live prices periodically
+  useEffect(() => {
+    if (Object.keys(livePrices).length > 0) {
+      setHoldings(prev => {
+        const updated = prev.map(h => {
+          const liveData = livePrices[h.ticker];
+          if (!liveData) return h;
+
+          const price = liveData.price;
+          const marketValue = price * h.quantity;
+          const costBasis = h.avgCost * h.quantity;
+          const plPercent = costBasis > 0 ? ((marketValue - costBasis) / costBasis) * 100 : 0;
+
+          return {
+            ...h,
+            price,
+            marketValue,
+            plPercent
+          };
+        });
+
+        // Calculate weights on updated set
+        const totalValue = updated.reduce((sum, h) => sum + h.marketValue, 0);
+        return updated.map(h => ({
+          ...h,
+          weight: totalValue > 0 ? (h.marketValue / totalValue) * 100 : 0
+        }));
+      });
+    }
+  }, [livePrices]);
+
   React.useEffect(() => {
     const interval = setInterval(() => {
       setLatency(prev => {
-        const change = Math.floor(Math.random() * 5) - 2; // -2 to +2
+        const change = Math.floor(Math.random() * 5) - 2;
         const next = prev + change;
-        return Math.max(8, Math.min(32, next)); // Keep between 8ms and 32ms
+        return Math.max(8, Math.min(32, next));
       });
     }, 3000);
     return () => clearInterval(interval);
@@ -60,13 +161,15 @@ const App: React.FC = () => {
   const renderDashboardContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <Dashboard holdings={holdings} currency={currency} />;
+        return <Dashboard holdings={holdings} currency={currency} marketIndices={marketIndices} pricesLoading={pricesLoading} livePrices={livePrices} news={news} />;
       case 'positions':
         return <PortfolioDetails holdings={holdings} setHoldings={setHoldings} currency={currency} />;
       case 'predictions':
-        return <PredictionEngine currency={currency} />;
+        return <PredictionEngine currency={currency} currentPrice={reliancePrice} />;
       case 'insights':
-        return <MarketInsights />;
+        return <MarketInsights articles={news} loading={newsLoading} />;
+      case 'history':
+        return <HistoryTab />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-on-surface-variant">
