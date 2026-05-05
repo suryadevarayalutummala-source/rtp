@@ -135,28 +135,6 @@ python model/lstm_price.py
 | `npm run server` | Start Express backend |
 | `npm run clean` | Remove dist directory |
 
-## Design System
-
-### Typography
-- **Headline** - Display text and large headings
-- **Label** - UI labels and uppercase tracking text
-- **Body** - General content text
-
-### Color Tokens
-- **Primary** - Main brand color (#bdc2ff)
-- **Secondary** - Success/green (#88d982)
-- **Tertiary** - Error/red
-- **Surface** - Background layers (low, container, highest)
-- **On-* ** - Foreground colors for contrast
-
-## Security Features
-
-- 256-bit encrypted communications
-- Multi-factor authentication ready
-- JWT-based session management
-- Security key recovery for institutional accounts
-- Tier-1 security standards compliance
-
 ## License
 
 Apache 2.0
