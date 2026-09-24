@@ -7,7 +7,7 @@ An institutional-grade private wealth and market intelligence platform for high-
 
 ## Features
 
-### Core Modules
+### Core Modules used
 
 - **Dashboard** - Real-time portfolio overview with market indices (Nifty 50, BSE Sensex, Nifty Bank), performance charts, and alpha signals
 - **Market Insights** - AI-curated news feed with sentiment analysis (bullish/bearish/neutral/high-alpha) across macro, energy, and policy sectors
