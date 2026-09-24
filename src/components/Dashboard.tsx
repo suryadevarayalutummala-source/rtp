@@ -7,7 +7,9 @@ import {
   ShieldCheck,
   Zap,
   AlertCircle,
-  Clock
+  Clock,
+  Copy,
+  Check
 } from 'lucide-react';
 import { FALLBACK_INDICES } from '../constants';
 import { Holding } from '../types';
@@ -55,6 +57,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Latest Alert
   const latestAlert = news[0];
+  const [summaryCopied, setSummaryCopied] = React.useState(false);
+
+  const handleCopySummary = async () => {
+    const summary = `Portfolio value: ${symbol}${totalValue.toLocaleString()} | P/L: ${symbol}${totalPL.toLocaleString()} (${plPercent.toFixed(2)}%)`;
+    await navigator.clipboard.writeText(summary);
+    setSummaryCopied(true);
+    window.setTimeout(() => setSummaryCopied(false), 2000);
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -96,6 +106,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={handleCopySummary}
+                  title="Copy portfolio summary"
+                  aria-label="Copy portfolio summary"
+                  className="ml-auto p-2 rounded-lg text-on-surface-variant hover:bg-surface-highest hover:text-on-surface transition-all"
+                >
+                  {summaryCopied ? <Check size={14} className="text-secondary" /> : <Copy size={14} />}
+                </button>
               </div>
               <h1 className="text-5xl font-headline font-extrabold tracking-[-0.04em] text-on-surface">
                 {symbol}{totalValue.toLocaleString()}<span className="text-xl text-on-surface-variant font-medium ml-3 tracking-normal">.00</span>
