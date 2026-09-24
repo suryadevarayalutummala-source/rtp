@@ -14,6 +14,7 @@ An institutional-grade private wealth and market intelligence platform for high-
 - **Portfolio Details** - Holdings management with P&L tracking, sector allocation, and cost basis analysis
 - **Prediction Engine** - LSTM-based price forecasting for equities with model confidence scoring and scenario analysis (bull/base/bear cases)
 - **Access Recovery** - Multi-tier account recovery including security key restoration for institutional accounts
+added the summary file
 
 ### Prediction Models
 
