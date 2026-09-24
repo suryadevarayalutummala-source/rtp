@@ -49,6 +49,8 @@ Models are trained on historical data from Yahoo Finance (e.g., SBIN.NS 2022-202
 - **yfinance** - Market data ingestion
 - **matplotlib** - Visualization
 
+summary file added into the repo
+
 ## Project Structure
 
 ```
