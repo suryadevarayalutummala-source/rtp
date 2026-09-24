@@ -1,4 +1,4 @@
-# Wealth Management System rahhh
+# Wealth Management System
 
 An institutional-grade private wealth and market intelligence platform for high-net-worth individuals and family offices. Built with React 19, TypeScript, and powered by LSTM-based quantitative prediction engines.
 
